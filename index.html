@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reservas de Transporte Escolar</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Base de datos: {{ db_name }}</p>
+      <h1>Reservas de transporte escolar</h1>
+    </div>
+  </header>
+
+  <main class="layout">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <section class="messages" aria-live="polite">
+          {% for category, message in messages %}
+            <p class="message {{ category }}">{{ message }}</p>
+          {% endfor %}
+        </section>
+      {% endif %}
+    {% endwith %}
+
+    <section class="panel">
+      <h2>Crear ruta</h2>
+      <form action="{{ url_for('crear_ruta') }}" method="post" class="grid-form">
+        <label>
+          Nombre
+          <input name="nombre" placeholder="Ruta 1" required>
+        </label>
+        <label>
+          Origen
+          <input name="origen" placeholder="Origen 1" required>
+        </label>
+        <label>
+          Destino
+          <input name="destino" placeholder="Destino 1" required>
+        </label>
+        <label class="wide">
+          Descripción
+          <input name="descripcion" placeholder="Paradas principales o notas">
+        </label>
+        <button type="submit">Guardar ruta</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Crear horario y cupos</h2>
+      <form action="{{ url_for('crear_horario') }}" method="post" class="grid-form">
+        <label>
+          Ruta
+          <select name="ruta_id" required>
+            <option value="">Selecciona una ruta</option>
+            {% for ruta in rutas %}
+              <option value="{{ ruta.id }}">{{ ruta.nombre }}: {{ ruta.origen }} - {{ ruta.destino }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Salida
+          <input type="time" name="hora_salida" required>
+        </label>
+        <label>
+          Llegada
+          <input type="time" name="hora_llegada" required>
+        </label>
+        <label>
+          Cupos
+          <input type="number" name="cupos_totales" min="1" required>
+        </label>
+        <button type="submit">Guardar horario</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Registrar reserva</h2>
+      <form action="{{ url_for('crear_reserva') }}" method="post" class="grid-form">
+        <label class="wide">
+          Horario
+          <select name="horario_id" required>
+            <option value="">Selecciona un horario</option>
+            {% for horario in horarios %}
+              <option value="{{ horario.id }}" {% if horario.cupos_disponibles <= 0 %}disabled{% endif %}>
+                {{ horario.ruta_nombre }} | {{ horario.hora_salida }} - {{ horario.hora_llegada }}
+                | cupos: {{ horario.cupos_disponibles }}/{{ horario.cupos_totales }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Estudiante
+          <input name="estudiante" required>
+        </label>
+        <label>
+          Acudiente
+          <input name="acudiente" required>
+        </label>
+        <label>
+          Teléfono
+          <input name="telefono" required>
+        </label>
+        <label>
+          Fecha
+          <input type="date" name="fecha_reserva" value="{{ today }}" required>
+        </label>
+        <button type="submit">Reservar cupo</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>Rutas registradas</h2>
+        <span>{{ rutas|length }} rutas</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ruta</th>
+              <th>Origen</th>
+              <th>Destino</th>
+              <th>Descripción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ruta in rutas %}
+              <tr>
+                <td>{{ ruta.nombre }}</td>
+                <td>{{ ruta.origen }}</td>
+                <td>{{ ruta.destino }}</td>
+                <td>{{ ruta.descripcion or "-" }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4">Aún no hay rutas registradas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>Horarios y cupos</h2>
+        <span>{{ horarios|length }} horarios</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ruta</th>
+              <th>Salida</th>
+              <th>Llegada</th>
+              <th>Cupos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for horario in horarios %}
+              <tr>
+                <td>{{ horario.ruta_nombre }}</td>
+                <td>{{ horario.hora_salida }}</td>
+                <td>{{ horario.hora_llegada }}</td>
+                <td>
+                  <span class="badge {% if horario.cupos_disponibles <= 0 %}full{% endif %}">
+                    {{ horario.cupos_disponibles }} / {{ horario.cupos_totales }}
+                  </span>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4">Aún no hay horarios registrados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>Reservas</h2>
+        <span>{{ reservas|length }} reservas</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Estudiante</th>
+              <th>Ruta</th>
+              <th>Horario</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for reserva in reservas %}
+              <tr>
+                <td>
+                  <strong>{{ reserva.estudiante }}</strong><br>
+                  <small>{{ reserva.acudiente }} | {{ reserva.telefono }}</small>
+                </td>
+                <td>{{ reserva.ruta_nombre }}</td>
+                <td>{{ reserva.hora_salida }} - {{ reserva.hora_llegada }}</td>
+                <td>{{ reserva.fecha_reserva }}</td>
+                <td><span class="badge status">{{ reserva.estado }}</span></td>
+                <td>
+                  {% if reserva.estado != "Cancelada" %}
+                    <form action="{{ url_for('cancelar_reserva', reserva_id=reserva.id) }}" method="post">
+                      <button class="ghost" type="submit">Cancelar</button>
+                    </form>
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="6">Aún no hay reservas registradas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
